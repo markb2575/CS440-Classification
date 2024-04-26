@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import random
 
 def getFaceData(type: int):
     """
@@ -46,7 +47,10 @@ def trainPerceptron(data, labels):
     Returns:
         weights
     """
+    faceDataTest,faceDataTestLabels = getFaceData(0)
     weights = np.random.uniform(-1,1, 42+1)
+    highestAccuracy = 0
+    consecutiveBelow = 0
     start_time = time.time()
     while True:
         # prev_weights[:] = weights
@@ -64,7 +68,14 @@ def trainPerceptron(data, labels):
                 for i in range(42):
                     weights[i] = weights[i] + features[i]
                 weights[42] = weights[42] + 1
-        if time.time() - start_time >= 600: # if 10 minutes has passed break out of loop
+        testResult = testPerceptron(faceDataTest,faceDataTestLabels,weights)
+        # print(testResult)
+        if testResult >= highestAccuracy:
+            highestAccuracy = testResult
+            consecutiveBelow = 0
+        else:
+            consecutiveBelow+=1
+        if consecutiveBelow >= 20:
             break
         # if np.allclose(weights, prev_weights, atol=0.001):
         #     break
@@ -81,14 +92,6 @@ def testPerceptron(data, labels, weights):
         if ((output >= 0 and labels[face_num] == 1) or (output < 0 and labels[face_num] == 0)):
             totalCorrect +=1
     return totalCorrect/len(data)
-
-def perceptron():
-    faceDataTrain, faceDataTrainLabels = getFaceData(1)
-    weights = trainPerceptron(faceDataTrain, faceDataTrainLabels)
-    faceDataTest, faceDataTestLabels = getFaceData(0)
-    # print(weights)
-    accuracy = testPerceptron(faceDataTest, faceDataTestLabels, weights)
-    print(f"Accuracy for Perceptron: {round((accuracy) * 100, 2)}%")
 
 def testNeural(data, labels, weights):
     w_i_h, w_h_o, b_i_h, b_h_o = weights
@@ -112,8 +115,10 @@ def trainNeural(data, labels):
     b_i_h = np.zeros((20, 1))
     b_h_o = np.zeros((1, 1))
     learn_rate = 0.01
-    nr_correct = 0
+    highestAccuracy = 0
+    consecutiveBelow = 0
     start_time = time.time()
+    faceDataTest, faceDataTestLabels = getFaceData(0)
     while True:
         for face_num in range(len(data)):
             features = getFeatures(data[face_num])
@@ -127,9 +132,9 @@ def trainNeural(data, labels):
             o_pre = b_h_o + w_h_o @ h
             o = 1 / (1 + np.exp(-o_pre))
 
-            e = 1 / len(o) * np.sum((o - label) ** 2, axis=0)
-            if ((label == 1 and o >= 0.5) or (label == 0 and o < 0.5)):
-                nr_correct += 1
+
+            # if ((label == 1 and o >= 0.5) or (label == 0 and o < 0.5)):
+            #     nr_correct += 1
 
             delta_o = o - label
 
@@ -139,20 +144,90 @@ def trainNeural(data, labels):
             delta_h = np.transpose(w_h_o) @ delta_o * (h * (1 - h))
             w_i_h += -learn_rate * delta_h @ np.transpose(features)
             b_i_h += -learn_rate * delta_h
-        # print(f"{nr_correct / len(data)} {nr_correct} {len(data)}")
-        nr_correct = 0
-        if time.time() - start_time >= 600: # if 10 minutes has passed break out of loop
+        weights = w_i_h, w_h_o, b_i_h, b_h_o
+        testResult = testNeural(faceDataTest,faceDataTestLabels,weights)
+        # print(testResult)
+        if testResult >= highestAccuracy:
+            highestAccuracy = testResult
+            consecutiveBelow = 0
+        else:
+            consecutiveBelow+=1
+        if consecutiveBelow >= 20:
             break
     return w_i_h, w_h_o, b_i_h, b_h_o
 
+def splitDataPoints(data, labels):
+    dataWithLabels = list(zip(data, labels))
+    size = len(dataWithLabels)
+    return (random.sample(dataWithLabels, round(size * .1)), random.sample(dataWithLabels, round(size * .2)), random.sample(dataWithLabels, round(size * .3)), random.sample(dataWithLabels, round(size * .4)), 
+            random.sample(dataWithLabels, round(size * .5)), random.sample(dataWithLabels, round(size * .6)), random.sample(dataWithLabels, round(size * .7)), random.sample(dataWithLabels, round(size * .8)), 
+            random.sample(dataWithLabels, round(size * .9)), dataWithLabels)
 
-def neural():
-    faceDataTrain, faceDataTrainLabels = getFaceData(1)
-    weights = trainNeural(faceDataTrain, faceDataTrainLabels)
-    faceDataTrain, faceDataTrainLabels = getFaceData(0)
-    # print(weights)
-    accuracy = testNeural(faceDataTrain, faceDataTrainLabels, weights)
-    print(f"Accuracy for Neural Network: {round((accuracy) * 100, 2)}%")
+def neural(training):
+    if training:
+        faceDataTrain, faceDataTrainLabels = getFaceData(1)
+        splits = splitDataPoints(faceDataTrain, faceDataTrainLabels)
+        weights = []
+        for split in splits:
+            data, label = zip(*split)
+            weight = trainNeural(data,label)
+            weights.append(weight)
+            # print("done")
+        return weights
+    else:
+        faceDataTest, faceDataTestLabels = getFaceData(0)
+        percent = 10
+        while percent <= 100:
+            w_i_h = np.load("weights/neural_face/" + str(percent) + "%/w_i_h.npy")
+            w_h_o = np.load("weights/neural_face/" + str(percent) + "%/w_h_o.npy")
+            b_i_h = np.load("weights/neural_face/" + str(percent) + "%/b_i_h.npy")
+            b_h_o = np.load("weights/neural_face/" + str(percent) + "%/b_h_o.npy")
+            weights = w_i_h, w_h_o, b_i_h, b_h_o
+            accuracy = testNeural(faceDataTest, faceDataTestLabels, weights)
+            print(f"Accuracy for Neural Network with {percent}% Training Data: {round((accuracy) * 100, 2)}%")
+            percent += 10
+        print()
 
-perceptron()
-neural()
+
+def perceptron(training):
+    if training:
+        faceDataTrain, faceDataTrainLabels = getFaceData(1)
+        splits = splitDataPoints(faceDataTrain, faceDataTrainLabels)
+        weights = []
+        for split in splits:
+            data, label = zip(*split)
+            weight = trainPerceptron(data,label)
+            weights.append(weight)
+            # print("done")
+        return weights
+    else:
+        faceDataTest, faceDataTestLabels = getFaceData(0)
+        percent = 10
+        while percent <= 100:
+            weights = np.load("weights/perceptron_face/" + str(percent) + "%.npy")
+            accuracy = testPerceptron(faceDataTest, faceDataTestLabels, weights)
+            print(f"Accuracy for Perceptron with {percent}% Training Data: {round((accuracy) * 100, 2)}%")
+            percent += 10
+        print()
+
+training = True
+perceptronWeights = perceptron(training=training)
+neuralWeights = neural(training=training)
+
+if training:
+    percent = 10
+    for weight in neuralWeights:
+        w_i_h, w_h_o, b_i_h, b_h_o = weight
+        np.save("weights/neural_face/" + str(percent) + "%/w_i_h", w_i_h)
+        np.save("weights/neural_face/" + str(percent) + "%/w_h_o", w_h_o)
+        np.save("weights/neural_face/" + str(percent) + "%/b_i_h", b_i_h)
+        np.save("weights/neural_face/" + str(percent) + "%/b_h_o", b_h_o)
+        percent += 10
+
+
+    percent = 10
+    for weight in perceptronWeights:
+        np.save("weights/perceptron_face/" + str(percent) + "%", weight)
+        percent += 10
+
+
