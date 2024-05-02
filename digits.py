@@ -61,7 +61,6 @@ def trainPerceptron(data, labels):
     highestAccuracy = 0
     consecutiveBelow = 0
     while True:
-        # prev_weights[:] = weights
         for digits_num in range(len(data)):
             outputs = []
             features = getFeatures(data[digits_num])
@@ -72,9 +71,6 @@ def trainPerceptron(data, labels):
                 output += weights[weight_num][49]
                 outputs.append(output)
             prediction = np.argmax(outputs)
-            # print(prediction)
-            # print(labels[digits_num])
-            # print()
             for i in range(49):
                 weights[prediction][i] -= features[i]
             weights[prediction][49] -= 1
@@ -88,7 +84,7 @@ def trainPerceptron(data, labels):
             consecutiveBelow = 0
         else:
             consecutiveBelow+=1
-        if consecutiveBelow >= 15:
+        if consecutiveBelow >= 5:
             break
         # if np.allclose(weights, prev_weights, atol=0.001):
         #     break
@@ -151,16 +147,18 @@ def trainNeural(data, labels):
             label = np.array(label)
             label.shape += (1,)
             features.shape += (1,)
-
+            # Forward propagation input -> hidden
             h_pre = b_i_h + w_i_h @ features
             h = 1 / (1 + np.exp(-h_pre))
-
+            # Forward propagation hidden -> output
             o_pre = b_h_o + w_h_o @ h
             o = 1 / (1 + np.exp(-o_pre))
+
+            # Backpropagation output -> hidden (cost function derivative)
             delta_o = o - label
             w_h_o += -learn_rate * delta_o @ np.transpose(h)
             b_h_o += -learn_rate * delta_o
-
+            # Backpropagation hidden -> input (activation function derivative)
             delta_h = np.transpose(w_h_o) @ delta_o * (h * (1 - h))
             w_i_h += -learn_rate * delta_h @ np.transpose(features)
             b_i_h += -learn_rate * delta_h
@@ -172,7 +170,7 @@ def trainNeural(data, labels):
             consecutiveBelow = 0
         else:
             consecutiveBelow+=1
-        if consecutiveBelow >= 15:
+        if consecutiveBelow >= 5:
             break
     return w_i_h, w_h_o, b_i_h, b_h_o
 
@@ -188,11 +186,14 @@ def neural(training):
         digitsDataTrain, digitsDataTrainLabels = getDigitsData(1)
         splits = splitDataPoints(digitsDataTrain, digitsDataTrainLabels)
         weights = []
+        percent = 10
         for split in splits:
             data, label = zip(*split)
+            start = time.time()
             weight = trainNeural(data,label)
+            print(f"Neural Network on Digits with {percent}% of data points took {time.time() - start} seconds to train")
             weights.append(weight)
-            print("done")
+            percent += 10
         return weights
     else:
         digitsDataTest, digitsDataTestLabels = getDigitsData(0)
@@ -208,17 +209,19 @@ def neural(training):
             percent += 10
         print()
 
-
 def perceptron(training):
     if training:
         digitsDataTrain, digitsDataTrainLabels = getDigitsData(1)
         splits = splitDataPoints(digitsDataTrain, digitsDataTrainLabels)
         weights = []
+        percent = 10
         for split in splits:
             data, label = zip(*split)
+            start = time.time()
             weight = trainPerceptron(data,label)
+            print(f"Perceptron on Digits with {percent}% of data points took {time.time() - start} seconds to train")
             weights.append(weight)
-            print("done")
+            percent += 10
         return weights
     else:
         digitsDataTest, digitsDataTestLabels = getDigitsData(0)
@@ -232,11 +235,12 @@ def perceptron(training):
             percent += 10
         print()
 
-training = False
-# perceptronWeights = perceptron(training=training)
-neuralWeights = neural(training=training)
-
-if training:
+def training():
+    """
+    Trains the neural network and perceptron on digits data and saves weights to file system
+    """
+    perceptronWeights = perceptron(training=True)
+    neuralWeights = neural(training=True)
     percent = 10
     for weight in neuralWeights:
         w_i_h, w_h_o, b_i_h, b_h_o = weight
@@ -245,12 +249,63 @@ if training:
         np.save("weights/neural_digits/" + str(percent) + "%/b_i_h", b_i_h)
         np.save("weights/neural_digits/" + str(percent) + "%/b_h_o", b_h_o)
         percent += 10
+    percent = 10
+    for weight in perceptronWeights:
+        for i in range(10):
+            np.save("weights/perceptron_digits/" + str(percent) + "%/" + str(i), weight[i])
+        percent += 10
+
+def testing():
+    """
+    Tests the neural network and perceptron on digits data and reports accuracy
+    """
+    perceptron(training=False)
+    neural(training=False)
+
+def runTestPerceptron(num):
+    """
+    Runs perceptron trained on 100% of data for digits on a certain test case (num)
+    """
+    try:
+        data, labels = getDigitsData(0)
+        weights = []
+        for i in range(10):
+            weights.append(np.load("weights/perceptron_digits/100%/" + str(i) + ".npy"))
+        features = getFeatures(data[num])
+        outputs = []
+        for weight_num in range(len(weights)):
+            output = 0
+            for i in range(49):
+                output += weights[weight_num][i] * features[i]
+            output += weights[weight_num][49]
+            outputs.append(output)
+        prediction = np.argmax(outputs)
+        print(f"Predicted Label: {prediction} Actual Label: {labels[num]}")
+    except:
+        print(f"Could not run test with input: {num}")
+
+def runTestNeural(num):
+    """
+    Runs neural network trained on 100% of data for digits on a certain test case (num)
+    """
+    try:
+        data, labels = getDigitsData(0)
+        w_i_h = np.load("weights/neural_digits/100%/w_i_h.npy")
+        w_h_o = np.load("weights/neural_digits/100%/w_h_o.npy")
+        b_i_h = np.load("weights/neural_digits/100%/b_i_h.npy")
+        b_h_o = np.load("weights/neural_digits/100%/b_h_o.npy")
+        features = getFeatures(data[num])
+        features = np.array(features)
+        label = np.array(labels[num])
+        features.shape += (1,)
+        h_pre = b_i_h + w_i_h @ features
+        h = 1 / (1 + np.exp(-h_pre))
+        o_pre = b_h_o + w_h_o @ h
+        o = 1 / (1 + np.exp(-o_pre))
+        print(f"Predicted Label: {np.argmax(o)} Actual Label: {labels[num]}")
+    except:
+        print(f"Could not run test with input: {num}")
 
 
-    # percent = 10
-    # for weight in perceptronWeights:
-    #     for i in range(10):
-    #         np.save("weights/perceptron_digits/" + str(percent) + "%/" + str(i), weight[i])
-    #     percent += 10
 
 

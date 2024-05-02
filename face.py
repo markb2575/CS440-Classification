@@ -125,22 +125,18 @@ def trainNeural(data, labels):
             features = np.array(features)
             label = np.array(labels[face_num])
             features.shape += (1,)
-
+            # Forward propagation input -> hidden
             h_pre = b_i_h + w_i_h @ features
             h = 1 / (1 + np.exp(-h_pre))
-
+            # Forward propagation hidden -> output
             o_pre = b_h_o + w_h_o @ h
             o = 1 / (1 + np.exp(-o_pre))
 
-
-            # if ((label == 1 and o >= 0.5) or (label == 0 and o < 0.5)):
-            #     nr_correct += 1
-
+            # Backpropagation output -> hidden (cost function derivative)
             delta_o = o - label
-
             w_h_o += -learn_rate * delta_o @ np.transpose(h)
             b_h_o += -learn_rate * delta_o
-
+            # Forward propagation input -> hidden
             delta_h = np.transpose(w_h_o) @ delta_o * (h * (1 - h))
             w_i_h += -learn_rate * delta_h @ np.transpose(features)
             b_i_h += -learn_rate * delta_h
@@ -168,11 +164,14 @@ def neural(training):
         faceDataTrain, faceDataTrainLabels = getFaceData(1)
         splits = splitDataPoints(faceDataTrain, faceDataTrainLabels)
         weights = []
+        percent = 10
         for split in splits:
             data, label = zip(*split)
+            start = time.time()
             weight = trainNeural(data,label)
+            print(f"Neural Network on Faces with {percent}% of data points took {time.time() - start} seconds to train")
             weights.append(weight)
-            # print("done")
+            percent += 10
         return weights
     else:
         faceDataTest, faceDataTestLabels = getFaceData(0)
@@ -194,11 +193,14 @@ def perceptron(training):
         faceDataTrain, faceDataTrainLabels = getFaceData(1)
         splits = splitDataPoints(faceDataTrain, faceDataTrainLabels)
         weights = []
+        percent = 10
         for split in splits:
             data, label = zip(*split)
+            start = time.time()
             weight = trainPerceptron(data,label)
+            print(f"Perceptron on Faces with {percent}% of data points took {time.time() - start} seconds to train")
             weights.append(weight)
-            # print("done")
+            percent += 10
         return weights
     else:
         faceDataTest, faceDataTestLabels = getFaceData(0)
@@ -210,11 +212,20 @@ def perceptron(training):
             percent += 10
         print()
 
-training = True
-perceptronWeights = perceptron(training=training)
-neuralWeights = neural(training=training)
+def testing():
+    """
+    Tests the neural network and perceptron on face data and reports accuracy
+    """
+    perceptron(training=False)
+    neural(training=False)
 
-if training:
+
+def training():
+    """
+    Trains the neural network and perceptron on face data and saves weights to file system
+    """
+    perceptronWeights = perceptron(training=True)
+    neuralWeights = neural(training=True)
     percent = 10
     for weight in neuralWeights:
         w_i_h, w_h_o, b_i_h, b_h_o = weight
@@ -223,11 +234,44 @@ if training:
         np.save("weights/neural_face/" + str(percent) + "%/b_i_h", b_i_h)
         np.save("weights/neural_face/" + str(percent) + "%/b_h_o", b_h_o)
         percent += 10
-
-
     percent = 10
     for weight in perceptronWeights:
         np.save("weights/perceptron_face/" + str(percent) + "%", weight)
         percent += 10
 
+def runTestPerceptron(num):
+    """
+    Runs perceptron trained on 100% of data for face on a certain test case (num)
+    """
+    try:
+        data, labels = getFaceData(0)
+        weights = np.load("weights/perceptron_face/100%.npy")
+        features = getFeatures(data[num])
+        output = 0
+        for i in range(42):
+            output += weights[i] * features[i]
+        output += weights[42]
+        print(f"Predicted Label: {1 if output >= 0 else 0} Actual Label: {labels[num]}")
+    except:
+        print(f"Could not run test with input: {num}")
 
+def runTestNeural(num):
+    """
+    Runs neural network trained on 100% of data for face on a certain test case (num)
+    """
+    try:
+        data, labels = getFaceData(0)
+        w_i_h = np.load("weights/neural_face/100%/w_i_h.npy")
+        w_h_o = np.load("weights/neural_face/100%/w_h_o.npy")
+        b_i_h = np.load("weights/neural_face/100%/b_i_h.npy")
+        b_h_o = np.load("weights/neural_face/100%/b_h_o.npy")
+        features = getFeatures(data[num])
+        features = np.array(features)
+        features.shape += (1,)
+        h_pre = b_i_h + w_i_h @ features
+        h = 1 / (1 + np.exp(-h_pre))
+        o_pre = b_h_o + w_h_o @ h
+        o = 1 / (1 + np.exp(-o_pre))
+        print(f"Predicted Label: {1 if o >= 0.5 else 0} Actual Label: {labels[num]}")
+    except:
+        print(f"Could not run test with input: {num}")
