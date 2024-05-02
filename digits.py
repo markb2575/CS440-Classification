@@ -84,7 +84,7 @@ def trainPerceptron(data, labels):
             consecutiveBelow = 0
         else:
             consecutiveBelow+=1
-        if consecutiveBelow >= 5:
+        if consecutiveBelow >= 10:
             break
         # if np.allclose(weights, prev_weights, atol=0.001):
         #     break
@@ -170,7 +170,7 @@ def trainNeural(data, labels):
             consecutiveBelow = 0
         else:
             consecutiveBelow+=1
-        if consecutiveBelow >= 5:
+        if consecutiveBelow >= 10:
             break
     return w_i_h, w_h_o, b_i_h, b_h_o
 
