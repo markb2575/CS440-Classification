@@ -2,8 +2,12 @@ import digits
 import face
 
 #Trains all models
-face.training()
-digits.training()
+# face.training()
+# digits.training()
+
+#Tests all models
+face.testing()
+digits.testing()
 
 #Run specific test cases
 # face.runTestNeural(15)
