@@ -1,6 +1,8 @@
 import numpy as np
 import time
 import random
+import matplotlib.pyplot as plt
+
 
 def getFaceData(type: int):
     """
@@ -174,6 +176,7 @@ def neural(training):
             percent += 10
         return weights
     else:
+        accuracies = []
         faceDataTest, faceDataTestLabels = getFaceData(0)
         percent = 10
         while percent <= 100:
@@ -183,9 +186,11 @@ def neural(training):
             b_h_o = np.load("weights/neural_face/" + str(percent) + "%/b_h_o.npy")
             weights = w_i_h, w_h_o, b_i_h, b_h_o
             accuracy = testNeural(faceDataTest, faceDataTestLabels, weights)
+            accuracies.append(accuracy)
             print(f"Accuracy for Neural Network with {percent}% Training Data: {round((accuracy) * 100, 2)}%")
             percent += 10
         print()
+        return accuracies
 
 
 def perceptron(training):
@@ -203,21 +208,26 @@ def perceptron(training):
             percent += 10
         return weights
     else:
+        accuracies = []
         faceDataTest, faceDataTestLabels = getFaceData(0)
         percent = 10
         while percent <= 100:
             weights = np.load("weights/perceptron_face/" + str(percent) + "%.npy")
             accuracy = testPerceptron(faceDataTest, faceDataTestLabels, weights)
+            accuracies.append(accuracy)
             print(f"Accuracy for Perceptron with {percent}% Training Data: {round((accuracy) * 100, 2)}%")
             percent += 10
         print()
+        return accuracies
 
 def testing():
     """
     Tests the neural network and perceptron on face data and reports accuracy
     """
-    perceptron(training=False)
-    neural(training=False)
+    p_acc = perceptron(training=False)
+    n_acc = neural(training=False)
+
+    return p_acc, n_acc
 
 
 def training():

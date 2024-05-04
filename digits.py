@@ -1,6 +1,8 @@
 import numpy as np
 import time
 import random
+import matplotlib.pyplot as plt
+
 
 def getDigitsData(type: int):
     """
@@ -196,6 +198,7 @@ def neural(training):
             percent += 10
         return weights
     else:
+        accuracies = []
         digitsDataTest, digitsDataTestLabels = getDigitsData(0)
         percent = 10
         while percent <= 100:
@@ -205,9 +208,11 @@ def neural(training):
             b_h_o = np.load("weights/neural_digits/" + str(percent) + "%/b_h_o.npy")
             weights = w_i_h, w_h_o, b_i_h, b_h_o
             accuracy = testNeural(digitsDataTest, digitsDataTestLabels, weights)
+            accuracies.append(accuracy)
             print(f"Accuracy for Neural Network with {percent}% Training Data: {round((accuracy) * 100, 2)}%")
             percent += 10
         print()
+        return accuracies
 
 def perceptron(training):
     if training:
@@ -224,6 +229,7 @@ def perceptron(training):
             percent += 10
         return weights
     else:
+        accuracies = []
         digitsDataTest, digitsDataTestLabels = getDigitsData(0)
         percent = 10
         while percent <= 100:
@@ -231,9 +237,11 @@ def perceptron(training):
             for i in range(10):
                 weights.append(np.load("weights/perceptron_digits/" + str(percent) + "%/" + str(i) + ".npy"))
             accuracy = testPerceptron(digitsDataTest, digitsDataTestLabels, weights)
+            accuracies.append(accuracy)
             print(f"Accuracy for Perceptron with {percent}% Training Data: {round((accuracy) * 100, 2)}%")
             percent += 10
         print()
+        return accuracies
 
 def training():
     """
@@ -259,8 +267,10 @@ def testing():
     """
     Tests the neural network and perceptron on digits data and reports accuracy
     """
-    perceptron(training=False)
-    neural(training=False)
+    p_acc = perceptron(training=False)
+    n_acc = neural(training=False)
+
+    return p_acc, n_acc
 
 def runTestPerceptron(num):
     """
